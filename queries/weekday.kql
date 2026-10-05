@@ -1,0 +1,8 @@
+Daily
+| extend Weekday = toint(dayofweek(Day) / 1d)
+| summarize AverageAnalyticsGB = avg(AnalyticsGB), PeakAnalyticsGB = max(AnalyticsGB),
+            Days = count(), DaysWithUsage = countif(UsageRecords > 0)
+  by Weekday
+| extend DayOfWeek = dynamic(["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"])[Weekday]
+| order by Weekday asc
+| project DayOfWeek = tostring(DayOfWeek), AverageAnalyticsGB, PeakAnalyticsGB, Days, DaysWithUsage

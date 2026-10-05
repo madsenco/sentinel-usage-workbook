@@ -1,0 +1,6 @@
+ObservedUsage
+| summarize AnalyticsGB = sumif(GB, IsBillable and IsAnalytics),
+            OtherBillableGB = sumif(GB, IsBillable and not(IsAnalytics)),
+            NonBillableGB = sumif(GB, not(IsBillable))
+  by Solution
+| order by AnalyticsGB desc

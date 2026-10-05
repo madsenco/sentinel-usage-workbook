@@ -1,0 +1,11 @@
+Daily
+| summarize AnalyticsGB = sum(AnalyticsGB), OtherBillableGB = sum(OtherBillableGB),
+            NonBillableGB = sum(NonBillableGB), AvgAnalyticsGBPerDay = avg(AnalyticsGB),
+            P95AnalyticsGBPerDay = percentile(AnalyticsGB, 95), PeakAnalyticsGBPerDay = max(AnalyticsGB),
+            ScenarioGBPerDay = avg(ModelGB), DaysWithUsage = countif(UsageRecords > 0),
+            HoursWithUsage = sum(ReportedHours)
+| extend CompleteUTCDays = {LookbackDays}, Status = CoverageStatus,
+         PeriodStartUTC = PeriodStart, PeriodEndUTCExclusive = PeriodEnd
+| project Status, CompleteUTCDays, DaysWithUsage, HoursWithUsage, AnalyticsGB,
+          OtherBillableGB, NonBillableGB, AvgAnalyticsGBPerDay, P95AnalyticsGBPerDay,
+          PeakAnalyticsGBPerDay, ScenarioGBPerDay, PeriodStartUTC, PeriodEndUTCExclusive

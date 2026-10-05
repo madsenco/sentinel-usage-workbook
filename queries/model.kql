@@ -1,0 +1,19 @@
+let PaygRate = toscalar(Prices | where TierGB == 0 | project RatePerGB);
+let PaygCost = toscalar(Daily | summarize sum(ModelGB)) * PaygRate;
+let Models = materialize(
+    Daily
+    | extend JoinKey = 1
+    | join kind=inner (Prices | extend JoinKey = 1) on JoinKey
+    | extend DayCost = iff(TierGB == 0, ModelGB * RatePerGB,
+                           DailyPrice + max_of(0.0, ModelGB - TierGB) * RatePerGB)
+    | summarize PeriodCost = sum(DayCost),
+                OverageGB = sum(iff(TierGB == 0, 0.0, max_of(0.0, ModelGB - TierGB))),
+                UnusedGB = sum(iff(TierGB == 0, 0.0, max_of(0.0, TierGB - ModelGB))),
+                CoveredGB = sum(iff(TierGB == 0, 0.0, min_of(ModelGB, todouble(TierGB)))),
+                DaysOverTier = countif(TierGB > 0 and ModelGB > TierGB)
+      by TierGB, DailyPrice, RatePerGB
+);
+let Baselines = Models
+| where TierGB in ({CurrentTier})
+| project BaselineGB = TierGB, BaselinePeriodCost = PeriodCost;
+let LowestCost = toscalar(Models | summarize min(PeriodCost));

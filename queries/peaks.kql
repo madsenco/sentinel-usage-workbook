@@ -1,0 +1,7 @@
+let MeanGB = toscalar(Daily | summarize avg(AnalyticsGB));
+Daily
+| extend RatioToPeriodAverage = iff(MeanGB > 0, AnalyticsGB / MeanGB, real(null)),
+         Signal = case(UsageRecords == 0, "No Usage records - verify coverage",
+                       AnalyticsGB > MeanGB * 2.0, "Above 2x period average", "Within 2x period average")
+| top 15 by AnalyticsGB desc
+| project Day, AnalyticsGB, RatioToPeriodAverage, OtherBillableGB, NonBillableGB, ReportedHours, Signal

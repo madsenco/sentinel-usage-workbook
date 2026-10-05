@@ -1,0 +1,39 @@
+let PeriodEnd = startofday(now());
+let PeriodStart = PeriodEnd - {LookbackDays} * 1d;
+let Scale = 1.0 + todouble({GrowthPercent}) / 100.0;
+let ExcludedTables = dynamic(__EXCLUDED_TABLES__);
+let ObservedUsage = materialize(
+    Usage
+    | where TimeGenerated >= PeriodStart - 2d and TimeGenerated < now()
+    | where StartTime >= PeriodStart and StartTime < PeriodEnd and EndTime <= PeriodEnd
+    | extend TablePlan = tostring(column_ifexists("Plan", ""))
+    | extend TablePlan = iff(isempty(TablePlan), iff(DataType in (ExcludedTables), "NonAnalytics", "Analytics"), TablePlan)
+    | extend GB = Quantity / 1000.0
+    | extend IsAnalytics = TablePlan =~ "Analytics"
+);
+let Daily = materialize(
+    range Day from PeriodStart to (PeriodEnd - 1d) step 1d
+    | join kind=leftouter (
+        ObservedUsage
+        | summarize AnalyticsGB = sumif(GB, IsBillable and IsAnalytics),
+                    OtherBillableGB = sumif(GB, IsBillable and not(IsAnalytics)),
+                    NonBillableGB = sumif(GB, not(IsBillable)),
+                    UsageRecords = count(),
+                    ReportedHours = dcount(bin(StartTime, 1h))
+          by Day = bin(StartTime, 1d)
+    ) on Day
+    | project Day, AnalyticsGB = coalesce(AnalyticsGB, 0.0),
+              OtherBillableGB = coalesce(OtherBillableGB, 0.0),
+              NonBillableGB = coalesce(NonBillableGB, 0.0),
+              UsageRecords = coalesce(UsageRecords, tolong(0)),
+              ReportedHours = coalesce(ReportedHours, tolong(0))
+    | extend ModelGB = AnalyticsGB * Scale
+);
+let ObservedDays = toscalar(Daily | summarize countif(UsageRecords > 0));
+let CoverageStatus = case(ObservedDays == 0, "NO DATA - costs unavailable",
+    ObservedDays < {LookbackDays}, "INCOMPLETE - missing days assumed zero; indicative only",
+    "Estimate - verify invoice, benefits and tier eligibility");
+let Prices = datatable(TierGB:long, DailyPrice:real, RatePerGB:real)
+[
+__PRICE_ROWS__
+];

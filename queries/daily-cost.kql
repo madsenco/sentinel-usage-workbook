@@ -1,0 +1,9 @@
+let BestTier = toscalar(Models | order by PeriodCost asc, TierGB asc | take 1 | project TierGB);
+Daily
+| extend JoinKey = 1
+| join kind=inner (Prices | where TierGB in (0, {CurrentTier}, BestTier) | extend JoinKey = 1) on JoinKey
+| extend Tier = iff(TierGB == 0, "Pay-as-you-go", strcat(TierGB, " GB/day")),
+         EstimatedCost = iff(ObservedDays == 0, real(null),
+             iff(TierGB == 0, ModelGB * RatePerGB, DailyPrice + max_of(0.0, ModelGB - TierGB) * RatePerGB))
+| project Day, Tier, EstimatedCost
+| order by Day asc

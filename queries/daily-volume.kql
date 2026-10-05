@@ -1,0 +1,3 @@
+Daily
+| project Day, AnalyticsGB, OtherBillableGB, NonBillableGB, ScenarioAnalyticsGB = ModelGB
+| order by Day asc

@@ -1,0 +1,17 @@
+name: Validate workbook source
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  offline-tests:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run offline fixtures
+        shell: pwsh
+        run: .\tests\Test-Offline.ps1

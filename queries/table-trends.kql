@@ -1,0 +1,5 @@
+let TopTables = ObservedUsage | summarize BillableGB = sumif(GB, IsBillable) by DataType | top 10 by BillableGB desc | project DataType;
+ObservedUsage
+| where DataType in (TopTables)
+| summarize BillableGB = sumif(GB, IsBillable) by Day = bin(StartTime, 1d), DataType
+| order by Day asc

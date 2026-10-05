@@ -1,0 +1,18 @@
+Models
+| extend Tier = iff(TierGB == 0, "Pay-as-you-go", strcat(TierGB, " GB/day")),
+         SelectedBaseline = TierGB in ({CurrentTier}),
+         LowestModelledCost = ObservedDays > 0 and PeriodCost == LowestCost,
+         MonthlyWhatIfCost = iff(ObservedDays > 0, PeriodCost / {LookbackDays} * 30.0, real(null)),
+         MonthlyCommitmentPrice = DailyPrice * 30.0,
+         MonthlySavingsVsPAYG = iff(ObservedDays > 0, (PaygCost - PeriodCost) / {LookbackDays} * 30.0, real(null)),
+         SavingsVsPAYG = iff(ObservedDays > 0, PaygCost - PeriodCost, real(null)),
+         SavingsVsPAYGPercent = iff(PaygCost > 0, (PaygCost - PeriodCost) / PaygCost * 100.0, real(null)),
+         CommitmentUtilizationPercent = iff(TierGB > 0,
+             CoveredGB / (todouble(TierGB) * {LookbackDays}) * 100.0, real(null)),
+         PeriodCost = iff(ObservedDays > 0, PeriodCost, real(null)),
+         Status = CoverageStatus
+| order by MonthlyWhatIfCost asc, TierGB asc
+| project Tier, MonthlyWhatIfCost, MonthlyCommitmentPrice, MonthlySavingsVsPAYG,
+          SelectedBaseline, LowestModelledCost, SavingsVsPAYGPercent,
+          CommitmentUtilizationPercent, UnusedGB, OverageGB, DaysOverTier,
+          RatePerGB, DailyPrice, PeriodCost, SavingsVsPAYG, Status

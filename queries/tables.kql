@@ -1,0 +1,15 @@
+let TotalBillableGB = toscalar(ObservedUsage | summarize sumif(GB, IsBillable));
+let PaygRate = toscalar(Prices | where TierGB == 0 | project RatePerGB);
+ObservedUsage
+| summarize BillableGB = sumif(GB, IsBillable), NonBillableGB = sumif(GB, not(IsBillable)),
+            AnalyticsGB = sumif(GB, IsBillable and IsAnalytics),
+            DaysReporting = dcount(bin(StartTime, 1d)), LastUsageUTC = max(EndTime)
+  by DataType, TablePlan
+| extend BillableSharePercent = iff(TotalBillableGB > 0, BillableGB / TotalBillableGB * 100.0, 0.0),
+         AverageBillableGBPerDay = BillableGB / {LookbackDays},
+         AnalyticsPAYGEstimate = AnalyticsGB * PaygRate,
+         PotentialPAYGSavingAt20PercentReduction = AnalyticsGB * PaygRate * 0.2
+| top 25 by BillableGB desc
+| project DataType, TablePlan, BillableGB, BillableSharePercent, NonBillableGB,
+          AverageBillableGBPerDay, AnalyticsPAYGEstimate,
+          PotentialPAYGSavingAt20PercentReduction, DaysReporting, LastUsageUTC

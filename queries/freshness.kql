@@ -1,0 +1,8 @@
+ObservedUsage
+| summarize LastUsageUTC = max(EndTime), FirstUsageUTC = min(StartTime),
+            DaysReporting = dcount(bin(StartTime, 1d)), BillableGB = sumif(GB, IsBillable)
+  by DataType, TablePlan
+| extend HoursSinceLastUsage = datetime_diff("hour", now(), LastUsageUTC),
+         Status = iff(LastUsageUTC < PeriodEnd - 1d, "No usage on last complete day - investigate", "Usage on last complete day")
+| order by HoursSinceLastUsage desc
+| project DataType, TablePlan, Status, LastUsageUTC, HoursSinceLastUsage, DaysReporting, BillableGB, FirstUsageUTC

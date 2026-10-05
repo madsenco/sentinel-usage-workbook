@@ -1,0 +1,15 @@
+Models
+| extend JoinKey = 1
+| join kind=inner (Baselines | extend JoinKey = 1) on JoinKey
+| extend Tier = iff(TierGB == 0, "Pay-as-you-go", strcat(TierGB, " GB/day")),
+         BaselineTier = iff(BaselineGB == 0, "Pay-as-you-go", strcat(BaselineGB, " GB/day")),
+         MonthlyWhatIfCost = iff(ObservedDays > 0, PeriodCost / {LookbackDays} * 30.0, real(null)),
+         MonthlyBaselineCost = iff(ObservedDays > 0, BaselinePeriodCost / {LookbackDays} * 30.0, real(null)),
+         MonthlySavingsVsBaseline = iff(ObservedDays > 0,
+             (BaselinePeriodCost - PeriodCost) / {LookbackDays} * 30.0, real(null)),
+         SavingsVsBaselinePercent = iff(ObservedDays > 0 and BaselinePeriodCost > 0,
+             (BaselinePeriodCost - PeriodCost) / BaselinePeriodCost * 100.0, real(null)),
+         Status = CoverageStatus
+| order by BaselineGB asc, MonthlyWhatIfCost asc, TierGB asc
+| project BaselineTier, Tier, MonthlyWhatIfCost, MonthlyBaselineCost,
+          MonthlySavingsVsBaseline, SavingsVsBaselinePercent, Status
